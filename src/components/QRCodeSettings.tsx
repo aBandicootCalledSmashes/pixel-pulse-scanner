@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { QRCodeType, QROptions } from "@/lib/qr-generator";
-import { Link, Mail, Wifi, VCard } from "lucide-react";
+import { Link, Mail, Wifi, QrCode } from "lucide-react";
 
 interface QRCodeSettingsProps {
   onGenerate: (content: string, type: QRCodeType, options: QROptions) => void;
@@ -92,7 +91,7 @@ ${phone ? `TEL:${phone}\n` : ""}${vCardEmail ? `EMAIL:${vCardEmail}\n` : ""}${or
             <span className="hidden sm:inline">WiFi</span>
           </TabsTrigger>
           <TabsTrigger value="vcard" className="flex items-center gap-2">
-            <VCard className="h-4 w-4" />
+            <QrCode className="h-4 w-4" />
             <span className="hidden sm:inline">vCard</span>
           </TabsTrigger>
         </TabsList>
