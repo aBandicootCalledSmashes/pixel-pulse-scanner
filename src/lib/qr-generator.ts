@@ -1,4 +1,6 @@
+
 import QRCode from 'qrcode';
+import jsQR from 'jsqr';
 
 export type QRCodeType = 'text' | 'url' | 'email' | 'wifi' | 'vcard' | 'location' | 'sms' | 'call' | 'event' | 'payment';
 
@@ -153,18 +155,17 @@ export const decodeQRCode = async (file: File): Promise<string> => {
         
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
         
-        // Here we would normally use a QR code scanner library like jsQR
-        // Since we don't have it installed, we'll just simulate success
-        // In a real implementation, replace this with actual QR code scanning
-        resolve("https://example.com"); // Simulated result
-        
-        // In a real implementation, you would use:
-        // const code = jsQR(imageData.data, imageData.width, imageData.height);
-        // if (code) {
-        //   resolve(code.data);
-        // } else {
-        //   reject(new Error('No QR code found'));
-        // }
+        try {
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code) {
+            resolve(code.data);
+          } else {
+            reject(new Error('No QR code found in the image'));
+          }
+        } catch (error) {
+          console.error('Error decoding QR code:', error);
+          reject(new Error('Failed to decode QR code'));
+        }
       };
       
       img.onerror = () => {
