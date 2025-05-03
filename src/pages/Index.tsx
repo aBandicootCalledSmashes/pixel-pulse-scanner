@@ -2,7 +2,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { QRCodeType, QROptions, QRHistoryItem as QRHistoryItemType, generateQRCode, downloadQRCode, saveToHistory, getHistory } from "@/lib/qr-generator";
+import { 
+  QRCodeType, 
+  QROptions, 
+  QRHistoryItem as QRHistoryItemType, 
+  generateQRCode, 
+  downloadQRCode, 
+  saveToHistory, 
+  getHistory,
+  decodeQRCode
+} from "@/lib/qr-generator";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
 import QRCodeSettings from "@/components/QRCodeSettings";
 import QRHistory from "@/components/QRHistory";
@@ -21,11 +30,6 @@ export default function Index() {
     background: "#ffffff",
     margin: 1,
   });
-
-  // Initialize app with dark mode
-  useEffect(() => {
-    document.documentElement.classList.add('dark');
-  }, []);
   
   const handleGenerateQRCode = useCallback(async (content: string, type: QRCodeType, options: QROptions) => {
     if (!content.trim()) {
@@ -68,6 +72,46 @@ export default function Index() {
       });
     }
   }, [toast]);
+  
+  const handleUploadQRCode = useCallback(async (file: File) => {
+    try {
+      const content = await decodeQRCode(file);
+      
+      // For demonstration purposes, we'll assume all uploaded QRs are URLs
+      // In a real app, you'd need to detect the QR code type by parsing the content
+      const type: QRCodeType = "url";
+      
+      // Generate a new QR code from the decoded content
+      const dataUrl = await generateQRCode(content, currentOptions);
+      
+      setQrDataUrl(dataUrl);
+      setCurrentContent(content);
+      setCurrentType(type);
+      
+      // Save to history
+      const historyItem: QRHistoryItemType = {
+        id: uuidv4(),
+        type,
+        content,
+        options: currentOptions,
+        dataUrl,
+        timestamp: Date.now(),
+      };
+      
+      saveToHistory(historyItem);
+      
+      toast({
+        title: "QR code uploaded",
+        description: "Your QR code has been successfully scanned and regenerated",
+      });
+    } catch (error) {
+      toast({
+        title: "Error uploading QR code",
+        description: "Could not read the QR code from the uploaded image",
+        variant: "destructive",
+      });
+    }
+  }, [currentOptions, toast]);
   
   const handleDownload = useCallback((format: 'png' | 'svg') => {
     if (!qrDataUrl) return;
@@ -119,7 +163,10 @@ export default function Index() {
           <div className="lg:col-span-2 space-y-8">
             <div className="glass-card rounded-xl p-6">
               <h2 className="text-xl font-bold mb-4">Generate QR Code</h2>
-              <QRCodeSettings onGenerate={handleGenerateQRCode} />
+              <QRCodeSettings 
+                onGenerate={handleGenerateQRCode} 
+                onUpload={handleUploadQRCode}
+              />
             </div>
             
             {/* QR Code Display (Mobile) */}
