@@ -1,4 +1,3 @@
-
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 
@@ -126,6 +125,189 @@ export const formatPaymentContent = (type: 'paypal' | 'bitcoin', recipient: stri
     return `bitcoin:${recipient}${amount ? `?amount=${amount}` : ''}${note ? `&message=${encodeURIComponent(note)}` : ''}`;
   }
   return '';
+};
+
+// QR Code Type Detection Functions
+export const detectQRCodeType = (content: string): { type: QRCodeType, content: string } => {
+  const lowerContent = content.toLowerCase();
+  
+  // Check for URL
+  if (lowerContent.startsWith('http://') || lowerContent.startsWith('https://') || lowerContent.startsWith('www.')) {
+    // Check for PayPal URL specifically
+    if (lowerContent.includes('paypal.com/paypalme/')) {
+      return { type: 'payment', content };
+    }
+    return { type: 'url', content };
+  }
+  
+  // Check for WiFi
+  if (lowerContent.startsWith('wifi:')) {
+    return { type: 'wifi', content };
+  }
+  
+  // Check for Email
+  if (lowerContent.startsWith('mailto:')) {
+    return { type: 'email', content };
+  }
+  
+  // Check for vCard
+  if (lowerContent.includes('begin:vcard')) {
+    return { type: 'vcard', content };
+  }
+  
+  // Check for Location
+  if (lowerContent.startsWith('geo:')) {
+    return { type: 'location', content };
+  }
+  
+  // Check for SMS
+  if (lowerContent.startsWith('sms:')) {
+    return { type: 'sms', content };
+  }
+  
+  // Check for Call
+  if (lowerContent.startsWith('tel:')) {
+    return { type: 'call', content };
+  }
+  
+  // Check for Event
+  if (lowerContent.includes('begin:vevent')) {
+    return { type: 'event', content };
+  }
+  
+  // Check for Bitcoin payment
+  if (lowerContent.startsWith('bitcoin:')) {
+    return { type: 'payment', content };
+  }
+  
+  // Default to text if no other type matches
+  return { type: 'text', content };
+};
+
+// Parse specific QR code types
+export const parseQRContent = (content: string, type: QRCodeType): Record<string, string> => {
+  switch (type) {
+    case 'wifi': {
+      const ssidMatch = content.match(/S:(.*?);/);
+      const passMatch = content.match(/P:(.*?);/);
+      const securityMatch = content.match(/T:(.*?);/);
+      
+      return {
+        ssid: ssidMatch ? ssidMatch[1] : '',
+        password: passMatch ? passMatch[1] : '',
+        security: securityMatch ? securityMatch[1] : 'WPA',
+      };
+    }
+    
+    case 'email': {
+      const emailMatch = content.match(/mailto:(.*?)(?:\?|$)/);
+      const subjectMatch = content.match(/[?&]subject=([^&]*)/);
+      const bodyMatch = content.match(/[?&]body=([^&]*)/);
+      
+      return {
+        email: emailMatch ? emailMatch[1] : '',
+        subject: subjectMatch ? decodeURIComponent(subjectMatch[1]) : '',
+        body: bodyMatch ? decodeURIComponent(bodyMatch[1]) : '',
+      };
+    }
+    
+    case 'vcard': {
+      const nameMatch = content.match(/FN:(.*?)(?:\r?\n|$)/);
+      const phoneMatch = content.match(/TEL:(.*?)(?:\r?\n|$)/);
+      const emailMatch = content.match(/EMAIL:(.*?)(?:\r?\n|$)/);
+      const orgMatch = content.match(/ORG:(.*?)(?:\r?\n|$)/);
+      const titleMatch = content.match(/TITLE:(.*?)(?:\r?\n|$)/);
+      const urlMatch = content.match(/URL:(.*?)(?:\r?\n|$)/);
+      const addrMatch = content.match(/ADR:;;(.*?)(?:;;;|(?:\r?\n|$))/);
+      
+      return {
+        name: nameMatch ? nameMatch[1] : '',
+        phone: phoneMatch ? phoneMatch[1] : '',
+        email: emailMatch ? emailMatch[1] : '',
+        organization: orgMatch ? orgMatch[1] : '',
+        title: titleMatch ? titleMatch[1] : '',
+        url: urlMatch ? urlMatch[1] : '',
+        address: addrMatch ? addrMatch[1] : '',
+      };
+    }
+    
+    case 'location': {
+      if (content.includes('?q=')) {
+        const queryMatch = content.match(/\?q=([^&]*)/);
+        return {
+          query: queryMatch ? decodeURIComponent(queryMatch[1]) : '',
+        };
+      } else {
+        const coordsMatch = content.match(/geo:([^,]*),([^,?]*)/);
+        return {
+          latitude: coordsMatch ? coordsMatch[1] : '',
+          longitude: coordsMatch ? coordsMatch[2] : '',
+        };
+      }
+    }
+    
+    case 'sms': {
+      const phoneMatch = content.match(/sms:(.*?)(?:\?|$)/);
+      const bodyMatch = content.match(/[?&]body=([^&]*)/);
+      
+      return {
+        phone: phoneMatch ? phoneMatch[1] : '',
+        message: bodyMatch ? decodeURIComponent(bodyMatch[1]) : '',
+      };
+    }
+    
+    case 'call': {
+      const phoneMatch = content.match(/tel:(.*)/);
+      return {
+        phone: phoneMatch ? phoneMatch[1] : '',
+      };
+    }
+    
+    case 'event': {
+      const summaryMatch = content.match(/SUMMARY:(.*?)(?:\r?\n|$)/);
+      const startMatch = content.match(/DTSTART:(.*?)(?:\r?\n|$)/);
+      const endMatch = content.match(/DTEND:(.*?)(?:\r?\n|$)/);
+      const locationMatch = content.match(/LOCATION:(.*?)(?:\r?\n|$)/);
+      const descriptionMatch = content.match(/DESCRIPTION:(.*?)(?:\r?\n|$)/);
+      
+      return {
+        title: summaryMatch ? summaryMatch[1] : '',
+        start: startMatch ? startMatch[1] : '',
+        end: endMatch ? endMatch[1] : '',
+        location: locationMatch ? locationMatch[1] : '',
+        description: descriptionMatch ? descriptionMatch[1] : '',
+      };
+    }
+    
+    case 'payment': {
+      if (content.includes('paypal.com/paypalme/')) {
+        const usernameMatch = content.match(/paypalme\/(.*?)(?:\/|$)/);
+        const amountMatch = content.match(/paypalme\/.*?\/(.*?)(?:\/|$)/);
+        
+        return {
+          type: 'paypal',
+          recipient: usernameMatch ? usernameMatch[1] : '',
+          amount: amountMatch ? amountMatch[1] : '',
+        };
+      } else if (content.startsWith('bitcoin:')) {
+        const addressMatch = content.match(/bitcoin:(.*?)(?:\?|$)/);
+        const amountMatch = content.match(/[?&]amount=([^&]*)/);
+        const noteMatch = content.match(/[?&]message=([^&]*)/);
+        
+        return {
+          type: 'bitcoin',
+          recipient: addressMatch ? addressMatch[1] : '',
+          amount: amountMatch ? amountMatch[1] : '',
+          note: noteMatch ? decodeURIComponent(noteMatch[1]) : '',
+        };
+      }
+      
+      return { type: 'unknown' };
+    }
+    
+    default:
+      return { text: content };
+  }
 };
 
 // QR Code Reading Function

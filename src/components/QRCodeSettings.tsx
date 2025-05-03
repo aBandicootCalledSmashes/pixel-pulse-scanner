@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -12,10 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface QRCodeSettingsProps {
   onGenerate: (content: string, type: QRCodeType, options: QROptions) => void;
   onUpload: (file: File) => Promise<void>;
+  selectedType?: QRCodeType;
+  parsedContent?: Record<string, string> | null;
 }
 
-export default function QRCodeSettings({ onGenerate, onUpload }: QRCodeSettingsProps) {
-  const [type, setType] = useState<QRCodeType>("url");
+export default function QRCodeSettings({ onGenerate, onUpload, selectedType, parsedContent }: QRCodeSettingsProps) {
+  const [type, setType] = useState<QRCodeType>(selectedType || "url");
   const [content, setContent] = useState("");
   const [options, setOptions] = useState<QROptions>({
     size: 300,
@@ -69,6 +71,110 @@ export default function QRCodeSettings({ onGenerate, onUpload }: QRCodeSettingsP
   const [paymentCurrency, setPaymentCurrency] = useState("USD");
   const [paymentNote, setPaymentNote] = useState("");
 
+  // Update state based on props changes
+  useEffect(() => {
+    if (selectedType) {
+      setType(selectedType);
+    }
+  }, [selectedType]);
+
+  // Update form fields based on parsed content
+  useEffect(() => {
+    if (parsedContent && selectedType) {
+      switch (selectedType) {
+        case 'url':
+          setContent(parsedContent.text || "");
+          break;
+        case 'text':
+          setContent(parsedContent.text || "");
+          break;
+        case 'wifi':
+          setSsid(parsedContent.ssid || "");
+          setPassword(parsedContent.password || "");
+          break;
+        case 'email':
+          setEmail(parsedContent.email || "");
+          setSubject(parsedContent.subject || "");
+          setEmailBody(parsedContent.body || "");
+          break;
+        case 'vcard':
+          setName(parsedContent.name || "");
+          setPhone(parsedContent.phone || "");
+          setVCardEmail(parsedContent.email || "");
+          setOrganization(parsedContent.organization || "");
+          setTitle(parsedContent.title || "");
+          setUrl(parsedContent.url || "");
+          setAddress(parsedContent.address || "");
+          break;
+        case 'location':
+          if (parsedContent.query) {
+            setLocationQuery(parsedContent.query || "");
+            setLatitude("");
+            setLongitude("");
+          } else {
+            setLatitude(parsedContent.latitude || "");
+            setLongitude(parsedContent.longitude || "");
+            setLocationQuery("");
+          }
+          break;
+        case 'sms':
+          setSmsPhone(parsedContent.phone || "");
+          setSmsMessage(parsedContent.message || "");
+          break;
+        case 'call':
+          setCallPhone(parsedContent.phone || "");
+          break;
+        case 'event':
+          setEventTitle(parsedContent.title || "");
+          // Format dates for input fields if they exist
+          if (parsedContent.start) {
+            const formattedStart = formatISO8601ToDateTimeLocal(parsedContent.start);
+            setEventStart(formattedStart || "");
+          }
+          if (parsedContent.end) {
+            const formattedEnd = formatISO8601ToDateTimeLocal(parsedContent.end);
+            setEventEnd(formattedEnd || "");
+          }
+          setEventLocation(parsedContent.location || "");
+          setEventDescription(parsedContent.description || "");
+          break;
+        case 'payment':
+          if (parsedContent.type === 'paypal') {
+            setPaymentType('paypal');
+            setPaymentRecipient(parsedContent.recipient || "");
+            setPaymentAmount(parsedContent.amount || "");
+          } else if (parsedContent.type === 'bitcoin') {
+            setPaymentType('bitcoin');
+            setPaymentRecipient(parsedContent.recipient || "");
+            setPaymentAmount(parsedContent.amount || "");
+            setPaymentNote(parsedContent.note || "");
+          }
+          break;
+      }
+    }
+  }, [parsedContent, selectedType]);
+
+  const formatISO8601ToDateTimeLocal = (isoString: string): string => {
+    try {
+      // Basic handling of ISO8601 format from QR codes
+      // This is a simplified version and may need enhancement for all formats
+      if (isoString.length === 15) { // Basic format like "20230101T120000"
+        const year = isoString.substring(0, 4);
+        const month = isoString.substring(4, 6);
+        const day = isoString.substring(6, 8);
+        const hour = isoString.substring(9, 11);
+        const minute = isoString.substring(11, 13);
+        const second = isoString.substring(13, 15);
+        return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+      }
+      // If it's not in the expected format, return empty string
+      return "";
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return "";
+    }
+  };
+
   const handleColorChange = (key: 'foreground' | 'background', value: string) => {
     setOptions(prev => ({ ...prev, [key]: value }));
   };
@@ -114,7 +220,7 @@ ${phone ? `TEL:${phone}\n` : ""}${vCardEmail ? `EMAIL:${vCardEmail}\n` : ""}${or
 SUMMARY:${eventTitle}
 DTSTART:${eventStart.replace(/-/g, '').replace(/:/g, '')}
 DTEND:${eventEnd.replace(/-/g, '').replace(/:/g, '')}
-${eventLocation ? `LOCATION:${eventLocation}\n` : ''}${eventDescription ? `DESCRIPTION:${eventDescription}\n` : ''}END:VEVENT`;
+${eventLocation ? `LOCATION:${eventLocation}\n` : ''}${eventDescription ? `DESCRIPTION:${description}\n` : ''}END:VEVENT`;
         break;
       case "payment":
         if (paymentType === "paypal") {
@@ -132,7 +238,7 @@ ${eventLocation ? `LOCATION:${eventLocation}\n` : ''}${eventDescription ? `DESCR
     <div className="w-full space-y-4">
       <QRCodeUpload onUpload={onUpload} />
 
-      <Tabs defaultValue="url" className="w-full" onValueChange={(value) => setType(value as QRCodeType)}>
+      <Tabs defaultValue={type} value={type} className="w-full" onValueChange={(value) => setType(value as QRCodeType)}>
         <TabsList className="grid grid-cols-5 mb-4">
           <TabsTrigger value="url" className="flex items-center gap-2">
             <Link className="h-4 w-4" />

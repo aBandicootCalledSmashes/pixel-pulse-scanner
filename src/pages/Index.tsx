@@ -10,7 +10,9 @@ import {
   downloadQRCode, 
   saveToHistory, 
   getHistory,
-  decodeQRCode
+  decodeQRCode,
+  detectQRCodeType,
+  parseQRContent
 } from "@/lib/qr-generator";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
 import QRCodeSettings from "@/components/QRCodeSettings";
@@ -30,6 +32,7 @@ export default function Index() {
     background: "#ffffff",
     margin: 1,
   });
+  const [parsedContent, setParsedContent] = useState<Record<string, string> | null>(null);
   
   const handleGenerateQRCode = useCallback(async (content: string, type: QRCodeType, options: QROptions) => {
     if (!content.trim()) {
@@ -76,23 +79,24 @@ export default function Index() {
   const handleUploadQRCode = useCallback(async (file: File) => {
     try {
       const content = await decodeQRCode(file);
+      const { type, content: detectedContent } = detectQRCodeType(content);
       
-      // For demonstration purposes, we'll assume all uploaded QRs are URLs
-      // In a real app, you'd need to detect the QR code type by parsing the content
-      const type: QRCodeType = "url";
+      // Parse the content based on the detected type
+      const parsedData = parseQRContent(detectedContent, type);
+      setParsedContent(parsedData);
       
       // Generate a new QR code from the decoded content
-      const dataUrl = await generateQRCode(content, currentOptions);
+      const dataUrl = await generateQRCode(detectedContent, currentOptions);
       
       setQrDataUrl(dataUrl);
-      setCurrentContent(content);
+      setCurrentContent(detectedContent);
       setCurrentType(type);
       
       // Save to history
       const historyItem: QRHistoryItemType = {
         id: uuidv4(),
         type,
-        content,
+        content: detectedContent,
         options: currentOptions,
         dataUrl,
         timestamp: Date.now(),
@@ -101,10 +105,11 @@ export default function Index() {
       saveToHistory(historyItem);
       
       toast({
-        title: "QR code uploaded",
-        description: "Your QR code has been successfully scanned and regenerated",
+        title: `QR code detected: ${type.toUpperCase()}`,
+        description: "Your QR code has been successfully scanned and analyzed",
       });
     } catch (error) {
+      console.error("Error uploading QR code:", error);
       toast({
         title: "Error uploading QR code",
         description: "Could not read the QR code from the uploaded image",
@@ -127,6 +132,10 @@ export default function Index() {
     setCurrentContent(item.content);
     setCurrentType(item.type);
     setCurrentOptions(item.options);
+    
+    // Parse the content for display
+    const parsedData = parseQRContent(item.content, item.type);
+    setParsedContent(parsedData);
   }, []);
   
   const handleDeleteHistoryItem = useCallback((id: string) => {
@@ -166,6 +175,8 @@ export default function Index() {
               <QRCodeSettings 
                 onGenerate={handleGenerateQRCode} 
                 onUpload={handleUploadQRCode}
+                selectedType={currentType}
+                parsedContent={parsedContent}
               />
             </div>
             
@@ -177,6 +188,8 @@ export default function Index() {
                   dataUrl={qrDataUrl} 
                   options={currentOptions}
                   onDownload={handleDownload}
+                  type={currentType}
+                  parsedContent={parsedContent}
                 />
               </div>
             </div>
@@ -192,6 +205,8 @@ export default function Index() {
                   dataUrl={qrDataUrl} 
                   options={currentOptions}
                   onDownload={handleDownload}
+                  type={currentType}
+                  parsedContent={parsedContent}
                 />
               </div>
             </div>
