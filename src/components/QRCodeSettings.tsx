@@ -220,7 +220,7 @@ ${phone ? `TEL:${phone}\n` : ""}${vCardEmail ? `EMAIL:${vCardEmail}\n` : ""}${or
 SUMMARY:${eventTitle}
 DTSTART:${eventStart.replace(/-/g, '').replace(/:/g, '')}
 DTEND:${eventEnd.replace(/-/g, '').replace(/:/g, '')}
-${eventLocation ? `LOCATION:${eventLocation}\n` : ''}${eventDescription ? `DESCRIPTION:${description}\n` : ''}END:VEVENT`;
+${eventLocation ? `LOCATION:${eventLocation}\n` : ''}${eventDescription ? `DESCRIPTION:${eventDescription}\n` : ''}END:VEVENT`;
         break;
       case "payment":
         if (paymentType === "paypal") {
