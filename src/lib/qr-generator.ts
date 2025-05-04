@@ -83,12 +83,9 @@ export const formatVCardContent = (
   return vcard;
 };
 
-// New formatting functions for the additional QR code types
-export const formatLocationContent = (latitude: string, longitude: string, query = '') => {
-  if (query) {
-    return `geo:0,0?q=${encodeURIComponent(query)}`;
-  }
-  return `geo:${latitude},${longitude}`;
+// Updated formatLocationContent to use address
+export const formatLocationContent = (address: string) => {
+  return `geo:0,0?q=${encodeURIComponent(address)}`;
 };
 
 export const formatSmsContent = (phone: string, message = '') => {
@@ -232,18 +229,14 @@ export const parseQRContent = (content: string, type: QRCodeType): Record<string
     }
     
     case 'location': {
-      if (content.includes('?q=')) {
-        const queryMatch = content.match(/\?q=([^&]*)/);
+      // Updated to handle address from query parameter
+      const queryMatch = content.match(/\?q=([^&]*)/);
+      if (queryMatch) {
         return {
-          query: queryMatch ? decodeURIComponent(queryMatch[1]) : '',
-        };
-      } else {
-        const coordsMatch = content.match(/geo:([^,]*),([^,?]*)/);
-        return {
-          latitude: coordsMatch ? coordsMatch[1] : '',
-          longitude: coordsMatch ? coordsMatch[2] : '',
+          address: decodeURIComponent(queryMatch[1]),
         };
       }
+      return { address: '' };
     }
     
     case 'sms': {

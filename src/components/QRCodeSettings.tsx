@@ -45,10 +45,8 @@ export default function QRCodeSettings({ onGenerate, onUpload, selectedType, par
   const [url, setUrl] = useState("");
   const [address, setAddress] = useState("");
 
-  // Location specific states
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
-  const [locationQuery, setLocationQuery] = useState("");
+  // Location specific state (simplified to just address)
+  const [locationAddress, setLocationAddress] = useState("");
 
   // SMS specific states
   const [smsPhone, setSmsPhone] = useState("");
@@ -107,15 +105,8 @@ export default function QRCodeSettings({ onGenerate, onUpload, selectedType, par
           setAddress(parsedContent.address || "");
           break;
         case 'location':
-          if (parsedContent.query) {
-            setLocationQuery(parsedContent.query || "");
-            setLatitude("");
-            setLongitude("");
-          } else {
-            setLatitude(parsedContent.latitude || "");
-            setLongitude(parsedContent.longitude || "");
-            setLocationQuery("");
-          }
+          // Updated to use address
+          setLocationAddress(parsedContent.address || "");
           break;
         case 'sms':
           setSmsPhone(parsedContent.phone || "");
@@ -205,9 +196,8 @@ FN:${name}
 ${phone ? `TEL:${phone}\n` : ""}${vCardEmail ? `EMAIL:${vCardEmail}\n` : ""}${organization ? `ORG:${organization}\n` : ""}${title ? `TITLE:${title}\n` : ""}${url ? `URL:${url}\n` : ""}${address ? `ADR:;;${address};;;\n` : ""}END:VCARD`;
         break;
       case "location":
-        finalContent = locationQuery ? 
-          `geo:0,0?q=${encodeURIComponent(locationQuery)}` :
-          `geo:${latitude},${longitude}`;
+        // Updated to use address
+        finalContent = `geo:0,0?q=${encodeURIComponent(locationAddress)}`;
         break;
       case "sms":
         finalContent = `sms:${smsPhone}${smsMessage ? `?body=${encodeURIComponent(smsMessage)}` : ''}`;
@@ -414,37 +404,17 @@ ${eventLocation ? `LOCATION:${eventLocation}\n` : ''}${eventDescription ? `DESCR
         {/* Location Tab */}
         <TabsContent value="location" className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="locationQuery">Search for a place</Label>
+            <Label htmlFor="locationAddress">Enter Address</Label>
             <Input
-              id="locationQuery"
-              placeholder="e.g., Eiffel Tower, Paris, France"
-              value={locationQuery}
-              onChange={(e) => setLocationQuery(e.target.value)}
+              id="locationAddress"
+              placeholder="123 Main St, New York, NY 10001"
+              value={locationAddress}
+              onChange={(e) => setLocationAddress(e.target.value)}
               className="bg-background/50 border-white/10"
             />
-          </div>
-          <p className="text-xs text-muted-foreground">Or enter coordinates directly:</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="latitude">Latitude</Label>
-              <Input
-                id="latitude"
-                placeholder="e.g., 48.8584"
-                value={latitude}
-                onChange={(e) => setLatitude(e.target.value)}
-                className="bg-background/50 border-white/10"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="longitude">Longitude</Label>
-              <Input
-                id="longitude"
-                placeholder="e.g., 2.2945"
-                value={longitude}
-                onChange={(e) => setLongitude(e.target.value)}
-                className="bg-background/50 border-white/10"
-              />
-            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Enter a complete address that can be found on maps
+            </p>
           </div>
         </TabsContent>
 
